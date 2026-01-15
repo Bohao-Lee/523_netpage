@@ -430,6 +430,8 @@ function initPasswordProtection() {
     
     // 检查是否已经验证过（使用 sessionStorage）
     if (sessionStorage.getItem('523_authenticated') === 'true') {
+        // 恢复解密密码
+        setDecryptionPassword(SITE_PASSWORD);
         overlay.style.display = 'none';
         mainContent.style.display = 'block';
         return true;
@@ -440,7 +442,8 @@ function initPasswordProtection() {
         const password = passwordInput.value;
         
         if (password === SITE_PASSWORD) {
-            // 密码正确
+            // 密码正确，设置解密密码
+            setDecryptionPassword(password);
             sessionStorage.setItem('523_authenticated', 'true');
             overlay.style.opacity = '0';
             overlay.style.transition = 'opacity 0.5s ease';

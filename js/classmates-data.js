@@ -1,104 +1,85 @@
 /**
  * 523班同学数据
- * 从 CSV 文件加载数据
+ * 从加密的 JSON 文件加载数据
  */
 
 let classmatesData = [];
 let teachersData = [];
 
+// 存储密码用于解密
+let storedPassword = '';
+
 /**
- * 解析 CSV 文件内容
+ * 设置密码（用于解密数据）
  */
-function parseCSV(csvText, customMapping = null) {
-    const lines = csvText.trim().split('\n');
-    const headers = lines[0].split(',');
-    const data = [];
-    const mapping = customMapping || headerMapping;
-    
-    for (let i = 1; i < lines.length; i++) {
-        const line = lines[i];
-        if (!line.trim()) continue;
-        
-        // 处理 CSV 中可能包含逗号的字段（用引号包裹）
-        const values = parseCSVLine(line);
-        const obj = {};
-        
-        headers.forEach((header, index) => {
-            const key = mapping[header.trim()] || header.trim();
-            obj[key] = values[index] ? values[index].trim() : '';
-        });
-        
-        data.push(obj);
-    }
-    
-    return data;
+function setDecryptionPassword(password) {
+    storedPassword = password;
 }
 
 /**
- * 解析单行 CSV（处理引号内的逗号）
+ * 生成加密密钥
  */
-function parseCSVLine(line) {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-    
-    for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        
-        if (char === '"') {
-            inQuotes = !inQuotes;
-        } else if (char === ',' && !inQuotes) {
-            result.push(current);
-            current = '';
-        } else {
-            current += char;
+function generateKey(password, length) {
+    const key = [];
+    for (let i = 0; i < length; i++) {
+        key.push(password.charCodeAt(i % password.length));
+    }
+    return key;
+}
+
+/**
+ * 解密数据
+ */
+function decryptData(encryptedData, password) {
+    try {
+        // Base64 解码
+        const binaryString = atob(encryptedData);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
         }
+        
+        // 生成密钥
+        const key = generateKey(password, bytes.length);
+        
+        // XOR 解密
+        const decryptedBytes = new Uint8Array(bytes.length);
+        for (let i = 0; i < bytes.length; i++) {
+            decryptedBytes[i] = bytes[i] ^ key[i];
+        }
+        
+        // UTF-8 解码
+        const decoder = new TextDecoder('utf-8');
+        const jsonStr = decoder.decode(decryptedBytes);
+        
+        // 解析 JSON
+        return JSON.parse(jsonStr);
+    } catch (error) {
+        console.error('解密失败:', error);
+        return null;
     }
-    result.push(current);
-    
-    return result;
 }
 
 /**
- * CSV 表头到 JS 属性的映射（同学）
- */
-const headerMapping = {
-    '姓名': 'name',
-    '省份': 'province',
-    '城市': 'city',
-    '区县': 'district',
-    '公司': 'company',
-    '职位': 'position',
-    '行业': 'industry',
-    '电话': 'phone',
-    '邮箱': 'email',
-    '老家': 'hometown',
-    '寄语': 'message'
-};
-
-/**
- * CSV 表头到 JS 属性的映射（老师）
- */
-const teacherHeaderMapping = {
-    '姓名': 'name',
-    '科目': 'subject',
-    '电话': 'phone',
-    '邮箱': 'email',
-    '现状': 'status',
-    '寄语': 'message'
-};
-
-/**
- * 从 CSV 文件加载同学数据
+ * 从加密文件加载同学数据
  */
 async function loadClassmatesData() {
     try {
-        const response = await fetch('data/classmates.csv');
+        const response = await fetch('data/encrypted-classmates.json');
         if (!response.ok) {
             throw new Error('无法加载数据文件');
         }
-        const csvText = await response.text();
-        classmatesData = parseCSV(csvText, headerMapping);
+        const jsonData = await response.json();
+        
+        if (!storedPassword) {
+            throw new Error('未设置解密密码');
+        }
+        
+        classmatesData = decryptData(jsonData.data, storedPassword);
+        if (!classmatesData) {
+            throw new Error('解密失败');
+        }
+        
         console.log(`成功加载 ${classmatesData.length} 位同学的数据`);
         return classmatesData;
     } catch (error) {
@@ -109,16 +90,25 @@ async function loadClassmatesData() {
 }
 
 /**
- * 从 CSV 文件加载老师数据
+ * 从加密文件加载老师数据
  */
 async function loadTeachersData() {
     try {
-        const response = await fetch('data/teachers.csv');
+        const response = await fetch('data/encrypted-teachers.json');
         if (!response.ok) {
             throw new Error('无法加载老师数据文件');
         }
-        const csvText = await response.text();
-        teachersData = parseCSV(csvText, teacherHeaderMapping);
+        const jsonData = await response.json();
+        
+        if (!storedPassword) {
+            throw new Error('未设置解密密码');
+        }
+        
+        teachersData = decryptData(jsonData.data, storedPassword);
+        if (!teachersData) {
+            throw new Error('解密失败');
+        }
+        
         console.log(`成功加载 ${teachersData.length} 位老师的数据`);
         return teachersData;
     } catch (error) {
