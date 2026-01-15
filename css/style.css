@@ -69,13 +69,11 @@ body {
 
 .password-logo {
     width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    object-fit: cover;
+    height: auto;
+    max-height: 120px;
+    object-fit: contain;
     margin-bottom: 20px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    border: 3px solid var(--primary-color);
-    background: white;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
 }
 
 .password-icon {
@@ -167,12 +165,10 @@ body {
 
 .class-logo {
     width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    object-fit: cover;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    border: 3px solid rgba(255, 255, 255, 0.8);
-    background: white;
+    height: auto;
+    max-height: 100px;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
     transition: transform 0.3s ease;
 }
 
