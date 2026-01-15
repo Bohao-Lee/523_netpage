@@ -471,13 +471,30 @@ body {
     box-shadow: var(--shadow-lg);
 }
 
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
 .classmates-section h2 {
     color: var(--primary-color);
     font-size: 1.5rem;
-    margin-bottom: 20px;
+    margin-bottom: 0;
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+.scroll-hint {
+    color: var(--text-light);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 
 /* 筛选栏 */
@@ -511,11 +528,34 @@ body {
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-/* 同学网格 */
+/* 同学网格 - 上下滚动 */
 .classmates-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 20px;
+    max-height: 500px;
+    overflow-y: auto;
+    padding: 10px 5px;
+    scroll-behavior: smooth;
+}
+
+/* 自定义滚动条 */
+.classmates-grid::-webkit-scrollbar {
+    width: 8px;
+}
+
+.classmates-grid::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.classmates-grid::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 4px;
+}
+
+.classmates-grid::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
 }
 
 .classmates-grid .classmate-card {
@@ -706,6 +746,15 @@ body {
     .password-logo {
         width: 80px;
         height: 80px;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .classmates-grid {
+        max-height: 400px;
     }
 }
 
