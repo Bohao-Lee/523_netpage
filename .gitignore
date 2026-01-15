@@ -2,8 +2,13 @@
 data/classmates.csv
 data/teachers.csv
 
+# 原始图片文件（敏感信息，不上传到 GitHub）
+image/photos/
+image/gallery/
+
 # 加密脚本（本地使用）
 encrypt_data.py
+encrypt_images.py
 encrypt-data.js
 
 # Node.js 加密工具（备用）

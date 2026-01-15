@@ -15,11 +15,18 @@
         <div class="password-modal">
             <img src="image/523.svg" alt="523班班徽" class="password-logo">
             <h2>523班纪念网站</h2>
-            <p>请输入访问密码</p>
-            <div class="password-input-group">
-                <input type="password" id="password-input" placeholder="请输入密码..." autocomplete="off">
-                <button id="password-submit" class="password-btn">
-                    <i class="bi bi-arrow-right-circle-fill"></i>
+            <p>请使用你的账号登录</p>
+            <div class="login-form">
+                <div class="input-group">
+                    <label for="username-input"><i class="bi bi-person-fill"></i> 用户名</label>
+                    <input type="text" id="username-input" placeholder="请输入用户名" autocomplete="off">
+                </div>
+                <div class="input-group">
+                    <label for="password-input"><i class="bi bi-lock-fill"></i> 密码</label>
+                    <input type="password" id="password-input" placeholder="请输入密码" autocomplete="off">
+                </div>
+                <button id="password-submit" class="login-btn">
+                    <i class="bi bi-box-arrow-in-right"></i> 登录
                 </button>
             </div>
             <p class="password-error" id="password-error"></p>
@@ -50,6 +57,7 @@
             <div id="china-map" class="china-map">
                 <!-- 地图将由 JavaScript 渲染 -->
             </div>
+            
             <div class="map-legend">
                 <div class="legend-item">
                     <span class="legend-dot" style="background: #ff6b6b;"></span>
@@ -66,6 +74,17 @@
                 <div class="legend-item">
                     <span class="legend-dot" style="background: #e0e0e0;"></span>
                     <span>暂无</span>
+                </div>
+            </div>
+            
+            <!-- 海外同学区域 -->
+            <div class="overseas-section">
+                <div class="overseas-header">
+                    <h3><i class="bi bi-globe2"></i> 海外同学</h3>
+                    <span class="overseas-count" id="overseas-count">0</span>人
+                </div>
+                <div class="overseas-list" id="overseas-list">
+                    <!-- 海外同学将由 JavaScript 渲染 -->
                 </div>
             </div>
         </div>
@@ -131,6 +150,76 @@
         </div>
     </section>
 
+    <!-- 动态墙区域 -->
+    <section class="moments-section">
+        <div class="section-header">
+            <h2><i class="bi bi-chat-heart-fill"></i> 班级动态</h2>
+            <div class="tab-buttons">
+                <button class="tab-btn active" data-tab="messages">
+                    <i class="bi bi-chat-quote-fill"></i> 留言墙
+                </button>
+                <button class="tab-btn" data-tab="photos">
+                    <i class="bi bi-images"></i> 照片墙
+                </button>
+            </div>
+        </div>
+        
+        <!-- 发布动态区域 -->
+        <div class="post-moment-container">
+            <div class="post-moment-header">
+                <i class="bi bi-envelope-heart-fill" style="font-size: 1.5rem; color: var(--primary-color);"></i>
+                <span class="submit-title">想要发布动态或上传照片？</span>
+            </div>
+            <div class="submit-info">
+                <p>请将你的留言或照片发送至：</p>
+                <div class="contact-methods">
+                    <a href="mailto:libohao1998@gmail.com?subject=523班动态投稿&body=姓名：%0A内容：%0A" class="contact-btn email-btn">
+                        <i class="bi bi-envelope-fill"></i> libohao1998@gmail.com
+                    </a>
+                    <span class="contact-divider">或联系</span>
+                    <span class="contact-btn wechat-btn">
+                        <i class="bi bi-person-fill"></i> 李博豪
+                    </span>
+                </div>
+                <p class="submit-note">收到后我会尽快更新到网站上 📮</p>
+            </div>
+            
+            <!-- 快捷留言表单（发送到邮箱） -->
+            <div class="quick-submit-form">
+                <div class="form-header">
+                    <i class="bi bi-send-fill"></i> 快捷留言（自动发送到管理员邮箱）
+                </div>
+                <div class="post-moment-form">
+                    <div class="form-row">
+                        <span class="form-label">发送者：</span>
+                        <span class="form-value" id="sender-name">-</span>
+                    </div>
+                    <textarea id="moment-content" placeholder="写下你想说的话..." maxlength="500"></textarea>
+                    <div class="post-moment-footer">
+                        <span class="char-count"><span id="char-count">0</span>/500</span>
+                        <button id="post-moment-btn" class="post-btn">
+                            <i class="bi bi-send-fill"></i> 发送留言
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 留言墙 -->
+        <div class="tab-content active" id="messages-tab">
+            <div class="messages-grid" id="messages-grid">
+                <!-- 留言将由 JavaScript 渲染 -->
+            </div>
+        </div>
+        
+        <!-- 照片墙 -->
+        <div class="tab-content" id="photos-tab">
+            <div class="photos-grid" id="photos-grid">
+                <!-- 照片将由 JavaScript 渲染 -->
+            </div>
+        </div>
+    </section>
+
     <!-- 页脚 -->
     <footer class="footer">
         <p>523班 · 高中毕业十周年纪念 · 2016-2026</p>
@@ -140,6 +229,7 @@
     </div><!-- 主内容区域结束 -->
 
     <!-- 引入脚本 -->
+    <script src="js/image-crypto.js"></script>
     <script src="js/china-map.js"></script>
     <script src="js/classmates-data.js"></script>
     <script src="js/app.js"></script>

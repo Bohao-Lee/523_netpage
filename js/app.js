@@ -5,10 +5,72 @@
 // 密码配置（实际使用中建议在服务端验证）
 const SITE_PASSWORD = '523forever';
 
+// 国家/地区到国旗表情的映射
+const COUNTRY_FLAGS = {
+    '英国': '🇬🇧',
+    '美国': '🇺🇸',
+    '加拿大': '🇨🇦',
+    '澳大利亚': '🇦🇺',
+    '日本': '🇯🇵',
+    '韩国': '🇰🇷',
+    '新加坡': '🇸🇬',
+    '德国': '🇩🇪',
+    '法国': '🇫🇷',
+    '意大利': '🇮🇹',
+    '荷兰': '🇳🇱',
+    '瑞士': '🇨🇭',
+    '新西兰': '🇳🇿',
+    '马来西亚': '🇲🇾',
+    '泰国': '🇹🇭',
+    '香港': '🇭🇰',
+    '澳门': '🇲🇴',
+    '台湾': '🇹🇼',
+    '俄罗斯': '🇷🇺',
+    '西班牙': '🇪🇸',
+    '葡萄牙': '🇵🇹',
+    '爱尔兰': '🇮🇪',
+    '瑞典': '🇸🇪',
+    '挪威': '🇳🇴',
+    '丹麦': '🇩🇰',
+    '芬兰': '🇫🇮',
+    '比利时': '🇧🇪',
+    '奥地利': '🇦🇹',
+    '阿联酋': '🇦🇪',
+    '印度': '🇮🇳',
+    '越南': '🇻🇳',
+    '菲律宾': '🇵🇭',
+    '印度尼西亚': '🇮🇩',
+    '巴西': '🇧🇷',
+    '墨西哥': '🇲🇽',
+    '阿根廷': '🇦🇷',
+    '南非': '🇿🇦',
+    '埃及': '🇪🇬',
+    '以色列': '🇮🇱',
+    '土耳其': '🇹🇷',
+    '波兰': '🇵🇱',
+    '捷克': '🇨🇿',
+    '匈牙利': '🇭🇺',
+    '希腊': '🇬🇷',
+    '海外': '🌍'
+};
+
+// 中国省份列表（用于判断是否为海外）
+const CHINA_PROVINCES = [
+    '北京', '天津', '上海', '重庆',
+    '河北', '山西', '辽宁', '吉林', '黑龙江',
+    '江苏', '浙江', '安徽', '福建', '江西', '山东',
+    '河南', '湖北', '湖南', '广东', '海南',
+    '四川', '贵州', '云南', '陕西', '甘肃', '青海',
+    '内蒙古', '广西', '西藏', '宁夏', '新疆',
+    '香港', '澳门', '台湾'
+];
+
 class ClassReunionApp {
     constructor() {
         this.classmates = [];
         this.teachers = [];
+        this.moments = [];  // 留言动态
+        this.photos = [];   // 照片墙
         this.currentProvince = null;
         this.chart = null;
     }
@@ -20,11 +82,13 @@ class ClassReunionApp {
         // 显示加载状态
         this.showLoading();
         
-        // 并行加载地图、同学和老师数据
+        // 并行加载地图、同学、老师数据和加密图片
         await Promise.all([
             this.loadMapData(),
             this.loadData(),
-            this.loadTeachers()
+            this.loadTeachers(),
+            this.loadEncryptedImages(),
+            this.loadMomentsFromServer()
         ]);
         
         // 初始化地图
@@ -35,10 +99,44 @@ class ClassReunionApp {
         this.updateStats();
         this.renderClassmatesList();
         this.renderTeachersList();
+        this.renderMoments();
+        this.renderPhotos();
         this.populateFilters();
+        this.initPostMoment();
         
         // 隐藏加载状态
         this.hideLoading();
+    }
+    
+    /**
+     * 加载动态数据
+     */
+    async loadMomentsFromServer() {
+        try {
+            this.moments = await loadMomentsData();
+        } catch (error) {
+            console.error('加载动态失败:', error);
+            this.moments = [];
+        }
+    }
+    
+    /**
+     * 加载加密的图片
+     */
+    async loadEncryptedImages() {
+        try {
+            // 加载同学照片
+            window.decryptedPhotos = await loadEncryptedImages('data/encrypted-photos.json', SITE_PASSWORD);
+            console.log(`成功加载 ${Object.keys(window.decryptedPhotos).length} 张同学照片`);
+            
+            // 加载照片墙图片
+            window.decryptedGallery = await loadEncryptedImages('data/encrypted-gallery.json', SITE_PASSWORD);
+            console.log(`成功加载 ${Object.keys(window.decryptedGallery).length} 张照片墙图片`);
+        } catch (error) {
+            console.error('加载加密图片失败:', error);
+            window.decryptedPhotos = {};
+            window.decryptedGallery = {};
+        }
     }
     
     /**
@@ -103,6 +201,19 @@ class ClassReunionApp {
     }
     
     /**
+     * 获取海外同学按国家统计
+     */
+    getOverseasCount() {
+        const count = {};
+        this.classmates.forEach(c => {
+            if (this.isOverseas(c.province)) {
+                count[c.province] = (count[c.province] || 0) + 1;
+            }
+        });
+        return count;
+    }
+    
+    /**
      * 绑定事件
      */
     bindEvents() {
@@ -126,6 +237,24 @@ class ClassReunionApp {
         if (industryFilter) {
             industryFilter.addEventListener('change', () => this.filterClassmates());
         }
+        
+        // 标签切换（留言墙/照片墙）
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tab = btn.dataset.tab;
+                
+                // 更新按钮状态
+                tabBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                // 更新内容显示
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(`${tab}-tab`).classList.add('active');
+            });
+        });
     }
     
     /**
@@ -172,35 +301,50 @@ class ClassReunionApp {
      * 渲染同学卡片
      */
     renderClassmateCard(classmate) {
-        const avatar = classmate.avatar || this.getDefaultAvatar(classmate.name);
+        // 优先使用加密的照片，否则使用默认头像
+        let avatar = this.getDefaultAvatar(classmate.name);
+        if (classmate.photo) {
+            const photoName = classmate.photo.replace(/\.[^/.]+$/, ''); // 移除扩展名
+            const decryptedUrl = getDecryptedImageUrl(photoName, 'photos');
+            if (decryptedUrl) {
+                avatar = decryptedUrl;
+            }
+        }
         
         return `
             <div class="classmate-card">
-                <div class="name">
-                    <span>${classmate.name}</span>
-                </div>
-                <div class="info-item">
-                    <i class="bi bi-geo-alt-fill"></i>
-                    <span>${classmate.city} · ${classmate.district}</span>
-                </div>
-                <div class="info-item">
-                    <i class="bi bi-building"></i>
-                    <span>${classmate.company}</span>
-                </div>
-                <div class="info-item">
-                    <i class="bi bi-briefcase-fill"></i>
-                    <span>${classmate.position}</span>
-                </div>
-                <div class="info-item">
-                    <i class="bi bi-tag-fill"></i>
-                    <span>${classmate.industry}</span>
-                </div>
-                ${classmate.hometown ? `
-                    <div class="info-item">
-                        <i class="bi bi-house-heart-fill"></i>
-                        <span>老家: ${classmate.hometown}</span>
+                <div class="card-header">
+                    <img src="${avatar}" alt="${classmate.name}" class="avatar" onerror="this.src='${this.getDefaultAvatar(classmate.name)}'">
+                    <div class="card-title">
+                        <div class="name">${classmate.name}</div>
+                        <div class="location">
+                            <i class="bi bi-geo-alt-fill"></i>
+                            ${classmate.city || classmate.province}
+                        </div>
                     </div>
-                ` : ''}
+                </div>
+                <div class="card-body">
+                    <div class="info-item">
+                        <i class="bi bi-building"></i>
+                        <span>${classmate.company || '暂未填写'}</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="bi bi-briefcase-fill"></i>
+                        <span>${classmate.position || '暂未填写'}</span>
+                    </div>
+                    ${classmate.industry ? `
+                        <div class="info-item">
+                            <i class="bi bi-tag-fill"></i>
+                            <span>${classmate.industry}</span>
+                        </div>
+                    ` : ''}
+                    ${classmate.hometown ? `
+                        <div class="info-item">
+                            <i class="bi bi-house-heart-fill"></i>
+                            <span>老家: ${classmate.hometown}</span>
+                        </div>
+                    ` : ''}
+                </div>
                 <div class="contact-info">
                     ${classmate.phone ? `
                         <div class="info-item">
@@ -282,6 +426,93 @@ class ClassReunionApp {
         if (statProvinces) statProvinces.textContent = this.getUniqueProvinces().length;
         if (statClassmates) statClassmates.textContent = this.classmates.length;
         if (statIndustries) statIndustries.textContent = this.getUniqueIndustries().length;
+        
+        // 渲染海外同学
+        this.renderOverseasClassmates();
+    }
+    
+    /**
+     * 判断是否为海外（排除"未知"和空值）
+     */
+    isOverseas(province) {
+        if (!province || province === '未知' || province === '') {
+            return false;
+        }
+        return !CHINA_PROVINCES.includes(province);
+    }
+    
+    /**
+     * 获取海外同学
+     */
+    getOverseasClassmates() {
+        return this.classmates.filter(c => this.isOverseas(c.province));
+    }
+    
+    /**
+     * 渲染海外同学区域
+     */
+    renderOverseasClassmates() {
+        const overseasList = document.getElementById('overseas-list');
+        const overseasCount = document.getElementById('overseas-count');
+        const overseasClassmates = this.getOverseasClassmates();
+        
+        if (!overseasList) return;
+        
+        if (overseasCount) {
+            overseasCount.textContent = overseasClassmates.length;
+        }
+        
+        if (overseasClassmates.length === 0) {
+            overseasList.innerHTML = '<div class="overseas-empty">暂无海外同学信息</div>';
+            return;
+        }
+        
+        // 按国家/地区分组
+        const countryGroups = {};
+        overseasClassmates.forEach(c => {
+            const country = c.province;
+            if (!countryGroups[country]) {
+                countryGroups[country] = [];
+            }
+            countryGroups[country].push(c);
+        });
+        
+        // 渲染国家标签
+        overseasList.innerHTML = Object.entries(countryGroups).map(([country, classmates]) => {
+            const flag = COUNTRY_FLAGS[country] || '🌍';
+            return `
+                <div class="overseas-item" data-country="${country}">
+                    <span class="country-flag">${flag}</span>
+                    <span class="country-name">${country}</span>
+                    <span class="country-count">${classmates.length}</span>
+                </div>
+            `;
+        }).join('');
+        
+        // 绑定点击事件
+        overseasList.querySelectorAll('.overseas-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const country = item.dataset.country;
+                this.showOverseasDetail(country);
+            });
+        });
+    }
+    
+    /**
+     * 显示海外同学详情
+     */
+    showOverseasDetail(country) {
+        const provinceNameEl = document.getElementById('province-name');
+        const detailContent = document.getElementById('detail-content');
+        const closeBtn = document.getElementById('close-btn');
+        
+        const countryClassmates = this.classmates.filter(c => c.province === country);
+        const flag = COUNTRY_FLAGS[country] || '🌍';
+        
+        provinceNameEl.textContent = `${flag} ${country} (${countryClassmates.length}人)`;
+        closeBtn.style.display = 'block';
+        
+        detailContent.innerHTML = countryClassmates.map(c => this.renderClassmateCard(c)).join('');
     }
     
     /**
@@ -416,35 +647,390 @@ class ClassReunionApp {
             </div>
         `;
     }
+    
+    /**
+     * 加载留言和照片数据（示例数据）
+     */
+    loadMomentsData() {
+        // 留言动态示例数据
+        this.moments = [
+            {
+                id: 1,
+                name: '张三',
+                avatar: '',
+                time: '2026-01-10',
+                content: '十年光阴，转眼即逝。还记得当年一起在教室里奋斗的日子，希望这次聚会能见到大家！',
+                images: []
+            },
+            {
+                id: 2,
+                name: '李四',
+                avatar: '',
+                time: '2026-01-08',
+                content: '刚收到聚会通知，太激动了！已经开始期待和老同学们重逢了，大家都还好吗？',
+                images: []
+            },
+            {
+                id: 3,
+                name: '王五',
+                avatar: '',
+                time: '2026-01-05',
+                content: '翻出了当年的毕业照，满满的回忆啊！523班永远是我心中最温暖的集体。',
+                images: []
+            },
+            {
+                id: 4,
+                name: '赵六',
+                avatar: '',
+                time: '2026-01-03',
+                content: '祝523班的同学们新年快乐！期待聚会时一起举杯畅聊！',
+                images: []
+            },
+            {
+                id: 5,
+                name: '陈七',
+                avatar: '',
+                time: '2025-12-28',
+                content: '十年了，大家都成长了很多，各自在不同的领域发光发热，为523班骄傲！',
+                images: []
+            }
+        ];
+        
+        // 照片墙示例数据
+        this.photos = [
+            {
+                id: 1,
+                src: 'image/gallery/graduation.jpg',
+                title: '2016届毕业合影',
+                date: '2016-06-15',
+                author: '班主任'
+            },
+            {
+                id: 2,
+                src: 'image/gallery/classroom.jpg',
+                title: '教室日常',
+                date: '2015-10-20',
+                author: '李四'
+            },
+            {
+                id: 3,
+                src: 'image/gallery/sports.jpg',
+                title: '运动会',
+                date: '2015-11-05',
+                author: '王五'
+            },
+            {
+                id: 4,
+                src: 'image/gallery/trip.jpg',
+                title: '秋游合照',
+                date: '2015-09-18',
+                author: '张三'
+            },
+            {
+                id: 5,
+                src: 'image/gallery/party.jpg',
+                title: '元旦晚会',
+                date: '2016-01-01',
+                author: '赵六'
+            },
+            {
+                id: 6,
+                src: 'image/gallery/study.jpg',
+                title: '晚自习',
+                date: '2016-03-10',
+                author: '陈七'
+            }
+        ];
+    }
+    
+    /**
+     * 渲染留言墙
+     */
+    renderMoments() {
+        const grid = document.getElementById('messages-grid');
+        if (!grid) return;
+        
+        // 获取所有动态（服务器 + 本地）
+        const allMoments = getAllMoments();
+        
+        if (allMoments.length === 0) {
+            grid.innerHTML = `
+                <div class="no-data" style="grid-column: 1/-1; text-align: center; padding: 40px;">
+                    <i class="bi bi-chat-dots" style="font-size: 3rem; color: #8b5cf6;"></i>
+                    <p style="margin-top: 15px; color: #5b21b6;">暂无留言，快来发表第一条动态吧！</p>
+                </div>
+            `;
+        } else {
+            grid.innerHTML = allMoments.map(m => this.renderMessageCard(m)).join('');
+        }
+    }
+    
+    /**
+     * 初始化发布动态功能（邮件方式）
+     */
+    initPostMoment() {
+        const textarea = document.getElementById('moment-content');
+        const charCount = document.getElementById('char-count');
+        const postBtn = document.getElementById('post-moment-btn');
+        const senderName = document.getElementById('sender-name');
+        
+        // 显示当前登录用户
+        const user = getCurrentUser();
+        if (user.name && senderName) {
+            senderName.textContent = user.name;
+        }
+        
+        // 字符计数
+        if (textarea) {
+            textarea.addEventListener('input', () => {
+                charCount.textContent = textarea.value.length;
+            });
+        }
+        
+        // 发布动态（打开邮件客户端）
+        if (postBtn) {
+            postBtn.addEventListener('click', () => {
+                this.postMomentByEmail();
+            });
+        }
+        
+        // 回车发送（Ctrl+Enter）
+        if (textarea) {
+            textarea.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    this.postMomentByEmail();
+                }
+            });
+        }
+    }
+    
+    /**
+     * 通过邮件发布动态
+     */
+    postMomentByEmail() {
+        const textarea = document.getElementById('moment-content');
+        const content = textarea.value.trim();
+        
+        if (!content) {
+            alert('请输入留言内容');
+            textarea.focus();
+            return;
+        }
+        
+        const user = getCurrentUser();
+        const senderName = user.name || '匿名同学';
+        const senderUsername = user.username || '未知';
+        const today = new Date().toISOString().split('T')[0];
+        
+        // 构建邮件内容
+        const subject = encodeURIComponent(`【523班动态投稿】来自 ${senderName} 的留言`);
+        const body = encodeURIComponent(
+`=== 523班动态投稿 ===
+
+发送者姓名：${senderName}
+发送者账号：${senderUsername}
+发送时间：${today}
+
+留言内容：
+${content}
+
+===========================
+此邮件由523班纪念网站自动生成`
+        );
+        
+        // 打开邮件客户端
+        const mailtoLink = `mailto:libohao1998@gmail.com?subject=${subject}&body=${body}`;
+        window.location.href = mailtoLink;
+        
+        // 提示用户
+        this.showToast('正在打开邮件客户端，请发送邮件完成投稿~');
+        
+        // 清空输入框
+        textarea.value = '';
+        document.getElementById('char-count').textContent = '0';
+    }
+    
+    /**
+     * 显示提示消息
+     */
+    showToast(message) {
+        // 创建提示元素
+        const toast = document.createElement('div');
+        toast.className = 'toast-message';
+        toast.innerHTML = `<i class="bi bi-check-circle-fill"></i> ${message}`;
+        document.body.appendChild(toast);
+        
+        // 动画显示
+        setTimeout(() => toast.classList.add('show'), 10);
+        
+        // 3秒后移除
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+    
+    /**
+     * 渲染留言卡片
+     */
+    renderMessageCard(moment) {
+        // 尝试获取加密的头像
+        let avatar = this.getDefaultAvatar(moment.name);
+        if (moment.avatar) {
+            const avatarName = moment.avatar.replace(/\.[^/.]+$/, '');
+            const decryptedUrl = getDecryptedImageUrl(avatarName, 'photos');
+            if (decryptedUrl) {
+                avatar = decryptedUrl;
+            }
+        }
+        
+        // 处理留言中的图片（使用加密图片）
+        let imagesHtml = '';
+        if (moment.images && moment.images.length > 0) {
+            const decryptedImages = moment.images.map(img => {
+                const imgName = img.replace(/^.*\//, '').replace(/\.[^/.]+$/, '');
+                return getDecryptedImageUrl(imgName, 'gallery') || img;
+            });
+            imagesHtml = `<div class="msg-images">${decryptedImages.map(img => `<img src="${img}" alt="图片">`).join('')}</div>`;
+        }
+        
+        return `
+            <div class="message-card">
+                <div class="msg-header">
+                    <img src="${avatar}" alt="${moment.name}" class="msg-avatar" onerror="this.src='${this.getDefaultAvatar(moment.name)}'">
+                    <div class="msg-info">
+                        <div class="msg-name">${moment.name}</div>
+                        <div class="msg-time"><i class="bi bi-clock"></i> ${moment.time}</div>
+                    </div>
+                </div>
+                <div class="msg-content">${moment.content}</div>
+                ${imagesHtml}
+            </div>
+        `;
+    }
+    
+    /**
+     * 渲染照片墙
+     */
+    renderPhotos() {
+        const grid = document.getElementById('photos-grid');
+        if (!grid) return;
+        
+        if (this.photos.length === 0) {
+            grid.innerHTML = `
+                <div class="no-data" style="grid-column: 1/-1; text-align: center; padding: 40px;">
+                    <i class="bi bi-images" style="font-size: 3rem; color: #8b5cf6;"></i>
+                    <p style="margin-top: 15px; color: #5b21b6;">暂无照片，快来分享美好回忆吧！</p>
+                </div>
+            `;
+        } else {
+            grid.innerHTML = this.photos.map(p => this.renderPhotoCard(p)).join('');
+        }
+    }
+    
+    /**
+     * 渲染照片卡片
+     */
+    renderPhotoCard(photo) {
+        // 优先使用加密的照片，否则使用占位图
+        const photoName = photo.src ? photo.src.replace(/^.*\//, '').replace(/\.[^/.]+$/, '') : `photo_${photo.id}`;
+        let imageSrc = getDecryptedImageUrl(photoName, 'gallery');
+        
+        // 如果没有加密图片，使用占位图
+        if (!imageSrc) {
+            imageSrc = `https://picsum.photos/400/400?random=${photo.id}`;
+        }
+        
+        return `
+            <div class="photo-card">
+                <img src="${imageSrc}" alt="${photo.title}">
+                <div class="photo-overlay">
+                    <div class="photo-title">${photo.title}</div>
+                    <div class="photo-date"><i class="bi bi-calendar3"></i> ${photo.date}</div>
+                </div>
+            </div>
+        `;
+    }
 }
 
 /**
- * 密码验证功能
+ * 多用户登录验证功能
  */
 function initPasswordProtection() {
     const overlay = document.getElementById('password-overlay');
     const mainContent = document.getElementById('main-content');
+    const usernameInput = document.getElementById('username-input');
     const passwordInput = document.getElementById('password-input');
     const passwordSubmit = document.getElementById('password-submit');
     const passwordError = document.getElementById('password-error');
     
     // 检查是否已经验证过（使用 sessionStorage）
-    if (sessionStorage.getItem('523_authenticated') === 'true') {
-        // 恢复解密密码
+    // 必须同时有认证状态和用户信息才算有效登录
+    const isAuthenticated = sessionStorage.getItem('523_authenticated') === 'true';
+    const hasUserInfo = sessionStorage.getItem('523_current_user') && sessionStorage.getItem('523_current_name');
+    
+    if (isAuthenticated && hasUserInfo) {
+        // 恢复解密密码和当前用户
         setDecryptionPassword(SITE_PASSWORD);
         overlay.style.display = 'none';
         mainContent.style.display = 'block';
         return true;
+    } else {
+        // 清除可能的无效登录状态
+        sessionStorage.removeItem('523_authenticated');
+        sessionStorage.removeItem('523_current_user');
+        sessionStorage.removeItem('523_current_name');
     }
     
-    // 验证密码
-    function verifyPassword() {
+    // 验证用户登录
+    async function verifyLogin() {
+        const username = usernameInput.value.trim().toLowerCase();
         const password = passwordInput.value;
         
-        if (password === SITE_PASSWORD) {
-            // 密码正确，设置解密密码
-            setDecryptionPassword(password);
+        if (!username) {
+            passwordError.textContent = '请输入用户名';
+            usernameInput.focus();
+            shakeInput(usernameInput);
+            return false;
+        }
+        
+        if (!password) {
+            passwordError.textContent = '请输入密码';
+            passwordInput.focus();
+            shakeInput(passwordInput);
+            return false;
+        }
+        
+        // 检查密码是否正确（初始密码为 523forever）
+        if (password !== SITE_PASSWORD) {
+            passwordError.textContent = '密码错误，请重试';
+            passwordInput.value = '';
+            passwordInput.focus();
+            shakeInput(passwordInput);
+            return false;
+        }
+        
+        // 密码正确，设置解密密码
+        setDecryptionPassword(password);
+        
+        // 临时加载数据验证用户名
+        try {
+            const classmates = await loadClassmatesData();
+            const validUser = classmates.find(c => c.username === username);
+            
+            if (!validUser) {
+                passwordError.textContent = '用户名不存在，请检查拼音是否正确';
+                usernameInput.value = '';
+                usernameInput.focus();
+                shakeInput(usernameInput);
+                return false;
+            }
+            
+            // 登录成功
             sessionStorage.setItem('523_authenticated', 'true');
+            sessionStorage.setItem('523_current_user', username);
+            sessionStorage.setItem('523_current_name', validUser.name);
+            
             overlay.style.opacity = '0';
             overlay.style.transition = 'opacity 0.5s ease';
             
@@ -460,34 +1046,48 @@ function initPasswordProtection() {
             }, 500);
             
             return true;
-        } else {
-            // 密码错误
-            passwordError.textContent = '密码错误，请重试';
-            passwordInput.value = '';
-            passwordInput.focus();
-            
-            // 抖动效果
-            passwordInput.style.animation = 'shake 0.5s';
-            setTimeout(() => {
-                passwordInput.style.animation = '';
-            }, 500);
-            
+        } catch (error) {
+            console.error('验证失败:', error);
+            passwordError.textContent = '验证失败，请重试';
             return false;
         }
     }
     
+    // 抖动效果
+    function shakeInput(input) {
+        input.style.animation = 'shake 0.5s';
+        setTimeout(() => {
+            input.style.animation = '';
+        }, 500);
+    }
+    
     // 绑定事件
-    passwordSubmit.addEventListener('click', verifyPassword);
+    passwordSubmit.addEventListener('click', verifyLogin);
+    usernameInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            passwordInput.focus();
+        }
+    });
     passwordInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
-            verifyPassword();
+            verifyLogin();
         }
     });
     
-    // 自动聚焦
-    passwordInput.focus();
+    // 自动聚焦到用户名输入框
+    usernameInput.focus();
     
     return false;
+}
+
+/**
+ * 获取当前登录用户
+ */
+function getCurrentUser() {
+    return {
+        username: sessionStorage.getItem('523_current_user'),
+        name: sessionStorage.getItem('523_current_name')
+    };
 }
 
 // 页面加载完成后初始化

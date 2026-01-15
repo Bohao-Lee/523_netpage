@@ -117,3 +117,63 @@ async function loadTeachersData() {
         return teachersData;
     }
 }
+
+/**
+ * 从加密文件加载动态数据
+ */
+let momentsData = [];
+
+async function loadMomentsData() {
+    try {
+        const response = await fetch('data/encrypted-moments.json');
+        if (!response.ok) {
+            throw new Error('无法加载动态数据文件');
+        }
+        const jsonData = await response.json();
+        
+        if (!storedPassword) {
+            throw new Error('未设置解密密码');
+        }
+        
+        momentsData = decryptData(jsonData.data, storedPassword);
+        if (!momentsData) {
+            throw new Error('解密失败');
+        }
+        
+        console.log(`成功加载 ${momentsData.length} 条动态数据`);
+        return momentsData;
+    } catch (error) {
+        console.error('加载动态数据失败:', error);
+        momentsData = [];
+        return momentsData;
+    }
+}
+
+/**
+ * 获取本地存储的动态（用户新发布的）
+ */
+function getLocalMoments() {
+    const localData = localStorage.getItem('523_local_moments');
+    return localData ? JSON.parse(localData) : [];
+}
+
+/**
+ * 保存动态到本地存储
+ */
+function saveLocalMoment(moment) {
+    const localMoments = getLocalMoments();
+    localMoments.unshift(moment); // 添加到最前面
+    localStorage.setItem('523_local_moments', JSON.stringify(localMoments));
+    return localMoments;
+}
+
+/**
+ * 获取所有动态（服务器 + 本地）
+ */
+function getAllMoments() {
+    const localMoments = getLocalMoments();
+    const allMoments = [...localMoments, ...momentsData];
+    // 按时间排序（最新的在前）
+    allMoments.sort((a, b) => new Date(b.time) - new Date(a.time));
+    return allMoments;
+}
