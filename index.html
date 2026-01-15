@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>523班 · 高中毕业十周年纪念</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- 引入 ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+</head>
+<body>
+    <!-- 密码保护遮罩 -->
+    <div class="password-overlay" id="password-overlay">
+        <div class="password-modal">
+            <div class="password-icon">🔐</div>
+            <h2>523班纪念网站</h2>
+            <p>请输入访问密码</p>
+            <div class="password-input-group">
+                <input type="password" id="password-input" placeholder="请输入密码..." autocomplete="off">
+                <button id="password-submit" class="password-btn">
+                    <i class="bi bi-arrow-right-circle-fill"></i>
+                </button>
+            </div>
+            <p class="password-error" id="password-error"></p>
+        </div>
+    </div>
+
+    <!-- 主内容区域（默认隐藏） -->
+    <div class="main-content" id="main-content" style="display: none;">
+        <!-- 顶部标题区域 -->
+        <header class="header">
+            <div class="header-content">
+                <h1>🎓 523班 · 高中毕业十周年纪念</h1>
+                <p class="subtitle">2016 - 2026 · 十年光阴，各自精彩</p>
+            </div>
+        </header>
+
+    <!-- 主要内容区域 -->
+    <main class="main-container">
+        <!-- 左侧：中国地图 -->
+        <div class="map-container">
+            <div class="map-header">
+                <h2><i class="bi bi-geo-alt-fill"></i> 同学分布图</h2>
+                <p>点击省份查看详情 · 共 <span id="total-count">0</span> 位同学</p>
+            </div>
+            <div id="china-map" class="china-map">
+                <!-- 地图将由 JavaScript 渲染 -->
+            </div>
+            <div class="map-legend">
+                <div class="legend-item">
+                    <span class="legend-dot" style="background: #ff6b6b;"></span>
+                    <span>5人以上</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot" style="background: #ffd93d;"></span>
+                    <span>2-4人</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot" style="background: #6bcb77;"></span>
+                    <span>1人</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot" style="background: #e0e0e0;"></span>
+                    <span>暂无</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：详情面板 -->
+        <div class="detail-panel" id="detail-panel">
+            <div class="detail-header">
+                <h2 id="province-name">欢迎来到523班纪念网站</h2>
+                <span class="close-btn" id="close-btn">&times;</span>
+            </div>
+            <div class="detail-content" id="detail-content">
+                <div class="welcome-message">
+                    <div class="welcome-icon">🌟</div>
+                    <h3>十年相聚，共叙情谊</h3>
+                    <p>点击地图上的省份，查看在该地区工作生活的同学们~</p>
+                    <div class="stats-overview">
+                        <div class="stat-item">
+                            <span class="stat-number" id="stat-provinces">0</span>
+                            <span class="stat-label">个省份</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="stat-classmates">0</span>
+                            <span class="stat-label">位同学</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="stat-industries">0</span>
+                            <span class="stat-label">个行业</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底部同学列表 -->
+    <section class="classmates-section">
+        <h2><i class="bi bi-people-fill"></i> 全部同学</h2>
+        <div class="filter-bar">
+            <input type="text" id="search-input" placeholder="搜索同学姓名..." class="search-input">
+            <select id="province-filter" class="province-filter">
+                <option value="">全部省份</option>
+            </select>
+            <select id="industry-filter" class="industry-filter">
+                <option value="">全部行业</option>
+            </select>
+        </div>
+        <div class="classmates-grid" id="classmates-grid">
+            <!-- 同学卡片将由 JavaScript 渲染 -->
+        </div>
+    </section>
+
+    <!-- 恩师风采区域 -->
+    <section class="teachers-section">
+        <h2><i class="bi bi-mortarboard-fill"></i> 恩师风采</h2>
+        <p class="section-desc">感谢老师们的辛勤培育，桃李满天下！</p>
+        <div class="teachers-grid" id="teachers-grid">
+            <!-- 老师卡片将由 JavaScript 渲染 -->
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <p>523班 · 高中毕业十周年纪念 · 2016-2026</p>
+        <p>愿我们都能成为更好的自己 ❤️</p>
+    </footer>
+
+    </div><!-- 主内容区域结束 -->
+
+    <!-- 引入脚本 -->
+    <script src="js/china-map.js"></script>
+    <script src="js/classmates-data.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
