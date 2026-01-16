@@ -618,9 +618,12 @@ class ClassReunionApp {
      * 渲染老师卡片
      */
     renderTeacherCard(teacher) {
+        // 给老师姓名加上"老师"尊称（如果名字本身不包含"老师"）
+        const displayName = teacher.name.endsWith('老师') ? teacher.name : teacher.name + '老师';
+        
         return `
             <div class="teacher-card">
-                <div class="name">${teacher.name}</div>
+                <div class="name">${displayName}</div>
                 <div class="subject">${teacher.subject}</div>
                 ${teacher.status ? `
                     <div class="status">
@@ -1013,10 +1016,20 @@ function initPasswordProtection() {
         // 密码正确，设置解密密码
         setDecryptionPassword(password);
         
-        // 临时加载数据验证用户名
+        // 临时加载数据验证用户名（同时检查同学和老师）
         try {
             const classmates = await loadClassmatesData();
-            const validUser = classmates.find(c => c.username === username);
+            const teachers = await loadTeachersData();
+            
+            // 先在同学中查找
+            let validUser = classmates.find(c => c.username === username);
+            let userType = 'student';
+            
+            // 如果同学中没找到，在老师中查找
+            if (!validUser) {
+                validUser = teachers.find(t => t.username === username);
+                userType = 'teacher';
+            }
             
             if (!validUser) {
                 passwordError.textContent = '用户名不存在，请检查拼音是否正确';
@@ -1030,6 +1043,7 @@ function initPasswordProtection() {
             sessionStorage.setItem('523_authenticated', 'true');
             sessionStorage.setItem('523_current_user', username);
             sessionStorage.setItem('523_current_name', validUser.name);
+            sessionStorage.setItem('523_user_type', userType);
             
             overlay.style.opacity = '0';
             overlay.style.transition = 'opacity 0.5s ease';
@@ -1084,9 +1098,19 @@ function initPasswordProtection() {
  * 获取当前登录用户
  */
 function getCurrentUser() {
+    const name = sessionStorage.getItem('523_current_name');
+    const userType = sessionStorage.getItem('523_user_type');
+    
+    // 如果是老师，显示名字时加上"老师"尊称
+    let displayName = name;
+    if (userType === 'teacher' && name && !name.endsWith('老师')) {
+        displayName = name + '老师';
+    }
+    
     return {
         username: sessionStorage.getItem('523_current_user'),
-        name: sessionStorage.getItem('523_current_name')
+        name: displayName,
+        userType: userType
     };
 }
 
