@@ -1452,3 +1452,158 @@ body {
     margin-bottom: 15px;
     color: #e2e8f0;
 }
+
+/* ========================================
+   BGM播放器样式
+   ======================================== */
+.bgm-player {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 10px 20px;
+    border-radius: 50px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.bgm-player:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
+}
+
+.bgm-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.bgm-btn:hover {
+    transform: scale(1.1);
+}
+
+.bgm-btn.playing {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.bgm-title {
+    font-size: 0.85rem;
+    color: var(--text-color);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* 音量控制 */
+.bgm-volume-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 10px;
+    padding-left: 10px;
+    border-left: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.bgm-volume-btn {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 5px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bgm-volume-btn:hover {
+    color: var(--primary-color);
+    transform: scale(1.1);
+}
+
+.bgm-volume-slider {
+    width: 80px;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.bgm-volume-slider:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.bgm-volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+}
+
+.bgm-volume-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+.bgm-volume-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .bgm-player {
+        bottom: 20px;
+        right: 20px;
+        padding: 8px 15px;
+    }
+    
+    .bgm-title {
+        display: none;
+    }
+    
+    .bgm-btn {
+        width: 45px;
+        height: 45px;
+    }
+    
+    .bgm-volume-control {
+        margin-left: 5px;
+        padding-left: 5px;
+    }
+    
+    .bgm-volume-slider {
+        width: 50px;
+    }
+}

@@ -1131,6 +1131,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 observer.disconnect();
                 window.app = new ClassReunionApp();
                 await window.app.init();
+                // 初始化BGM播放器
+                initBGMPlayer();
             }
         });
         
@@ -1140,3 +1142,96 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 });
+
+/**
+ * BGM播放器控制
+ */
+function initBGMPlayer() {
+    const audio = document.getElementById('bgm-audio');
+    const btn = document.getElementById('bgm-btn');
+    const icon = document.getElementById('bgm-icon');
+    const volumeBtn = document.getElementById('bgm-volume-btn');
+    const volumeIcon = document.getElementById('bgm-volume-icon');
+    const volumeSlider = document.getElementById('bgm-volume-slider');
+    
+    if (!audio || !btn) return;
+    
+    let isPlaying = false;
+    let previousVolume = 0.5; // 记住静音前的音量
+    
+    // 初始化音量为50%
+    audio.volume = 0.5;
+    
+    // 播放/暂停按钮
+    btn.addEventListener('click', () => {
+        if (isPlaying) {
+            audio.pause();
+            icon.className = 'bi bi-music-note-beamed';
+            btn.classList.remove('playing');
+        } else {
+            audio.play().catch(e => {
+                console.log('自动播放被阻止，需要用户手动点击');
+            });
+            icon.className = 'bi bi-pause-fill';
+            btn.classList.add('playing');
+        }
+        isPlaying = !isPlaying;
+    });
+    
+    // 音量滑块控制
+    if (volumeSlider) {
+        volumeSlider.addEventListener('input', (e) => {
+            const volume = e.target.value / 100;
+            audio.volume = volume;
+            updateVolumeIcon(volume);
+            if (volume > 0) {
+                previousVolume = volume;
+            }
+        });
+    }
+    
+    // 静音/取消静音按钮
+    if (volumeBtn) {
+        volumeBtn.addEventListener('click', () => {
+            if (audio.volume > 0) {
+                // 静音
+                previousVolume = audio.volume;
+                audio.volume = 0;
+                volumeSlider.value = 0;
+                updateVolumeIcon(0);
+            } else {
+                // 取消静音
+                audio.volume = previousVolume;
+                volumeSlider.value = previousVolume * 100;
+                updateVolumeIcon(previousVolume);
+            }
+        });
+    }
+    
+    // 更新音量图标
+    function updateVolumeIcon(volume) {
+        if (!volumeIcon) return;
+        if (volume === 0) {
+            volumeIcon.className = 'bi bi-volume-mute-fill';
+        } else if (volume < 0.3) {
+            volumeIcon.className = 'bi bi-volume-off-fill';
+        } else if (volume < 0.7) {
+            volumeIcon.className = 'bi bi-volume-down-fill';
+        } else {
+            volumeIcon.className = 'bi bi-volume-up-fill';
+        }
+    }
+    
+    // 监听播放结束（虽然设置了loop，但以防万一）
+    audio.addEventListener('ended', () => {
+        icon.className = 'bi bi-music-note-beamed';
+        btn.classList.remove('playing');
+        isPlaying = false;
+    });
+    
+    // 监听播放错误
+    audio.addEventListener('error', () => {
+        console.log('音频加载失败');
+        btn.title = '音频加载失败';
+    });
+}

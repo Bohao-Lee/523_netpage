@@ -35,6 +35,25 @@
 
     <!-- 主内容区域（默认隐藏） -->
     <div class="main-content" id="main-content" style="display: none;">
+        
+        <!-- BGM播放器 -->
+        <div class="bgm-player" id="bgm-player">
+            <audio id="bgm-audio" loop>
+                <source src="audio/五月天 - 干杯.mp3" type="audio/mpeg">
+            </audio>
+            <button class="bgm-btn" id="bgm-btn" title="播放/暂停背景音乐">
+                <i class="bi bi-music-note-beamed" id="bgm-icon"></i>
+            </button>
+            <span class="bgm-title">🎵 干杯 - 五月天</span>
+            <div class="bgm-volume-control">
+                <button class="bgm-volume-btn" id="bgm-volume-btn" title="静音/取消静音">
+                    <i class="bi bi-volume-up-fill" id="bgm-volume-icon"></i>
+                </button>
+                <input type="range" class="bgm-volume-slider" id="bgm-volume-slider" 
+                       min="0" max="100" value="50" title="调节音量">
+            </div>
+        </div>
+        
         <!-- 顶部标题区域 -->
         <header class="header">
             <div class="header-content">
