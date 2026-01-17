@@ -1157,10 +1157,11 @@ function initBGMPlayer() {
     if (!audio || !btn) return;
     
     let isPlaying = false;
-    let previousVolume = 0.5; // 记住静音前的音量
+    let previousVolume = 0.1; // 记住静音前的音量
     
-    // 初始化音量为50%
-    audio.volume = 0.5;
+    // 初始化音量为10%
+    audio.volume = 0.1;
+    if (volumeSlider) volumeSlider.value = 10;
     
     // 播放/暂停按钮
     btn.addEventListener('click', () => {
