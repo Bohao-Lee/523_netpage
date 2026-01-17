@@ -1161,7 +1161,6 @@ function initBGMPlayer() {
     
     // 初始化音量为10%
     audio.volume = 0.1;
-    if (volumeSlider) volumeSlider.value = 10;
     
     // 播放/暂停按钮
     btn.addEventListener('click', () => {
