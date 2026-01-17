@@ -88,7 +88,8 @@ class ClassReunionApp {
             this.loadData(),
             this.loadTeachers(),
             this.loadEncryptedImages(),
-            this.loadMomentsFromServer()
+            this.loadMomentsFromServer(),
+            this.loadEncryptedAlbums()
         ]);
         
         // 初始化地图
@@ -699,51 +700,32 @@ class ClassReunionApp {
             }
         ];
         
-        // 照片墙示例数据
-        this.photos = [
-            {
-                id: 1,
-                src: 'image/gallery/graduation.jpg',
-                title: '2016届毕业合影',
-                date: '2016-06-15',
-                author: '班主任'
-            },
-            {
-                id: 2,
-                src: 'image/gallery/classroom.jpg',
-                title: '教室日常',
-                date: '2015-10-20',
-                author: '李四'
-            },
-            {
-                id: 3,
-                src: 'image/gallery/sports.jpg',
-                title: '运动会',
-                date: '2015-11-05',
-                author: '王五'
-            },
-            {
-                id: 4,
-                src: 'image/gallery/trip.jpg',
-                title: '秋游合照',
-                date: '2015-09-18',
-                author: '张三'
-            },
-            {
-                id: 5,
-                src: 'image/gallery/party.jpg',
-                title: '元旦晚会',
-                date: '2016-01-01',
-                author: '赵六'
-            },
-            {
-                id: 6,
-                src: 'image/gallery/study.jpg',
-                title: '晚自习',
-                date: '2016-03-10',
-                author: '陈七'
+        // 相册数据将从加密文件异步加载
+        this.albums = [];
+        this.photos = [];
+    }
+    
+    /**
+     * 加载加密相册
+     */
+    async loadEncryptedAlbums() {
+        try {
+            // 加载相册索引
+            const albumsIndex = await loadAlbumsIndex();
+            this.albums = [];
+            
+            for (const albumInfo of albumsIndex) {
+                const albumData = await loadAlbum(albumInfo.file);
+                if (albumData) {
+                    this.albums.push(albumData);
+                }
             }
-        ];
+            
+            console.log(`已加载 ${this.albums.length} 个相册`);
+            this.renderPhotos();
+        } catch (error) {
+            console.error('加载相册失败:', error);
+        }
     }
     
     /**
@@ -913,46 +895,246 @@ ${content}
     }
     
     /**
-     * 渲染照片墙
+     * 渲染照片墙 - 文件夹模式
      */
     renderPhotos() {
         const grid = document.getElementById('photos-grid');
         if (!grid) return;
         
-        if (this.photos.length === 0) {
+        if (this.albums.length === 0) {
             grid.innerHTML = `
                 <div class="no-data" style="grid-column: 1/-1; text-align: center; padding: 40px;">
                     <i class="bi bi-images" style="font-size: 3rem; color: #8b5cf6;"></i>
-                    <p style="margin-top: 15px; color: #5b21b6;">暂无照片，快来分享美好回忆吧！</p>
+                    <p style="margin-top: 15px; color: #5b21b6;">正在加载相册...</p>
                 </div>
             `;
         } else {
-            grid.innerHTML = this.photos.map(p => this.renderPhotoCard(p)).join('');
+            // 渲染文件夹视图
+            grid.innerHTML = `
+                <div class="albums-folder-view">
+                    ${this.albums.map((album, index) => this.renderAlbumFolder(album, index)).join('')}
+                </div>
+                <div class="album-photos-view" id="album-photos-view" style="display: none;">
+                    <div class="album-photos-header">
+                        <button class="back-to-albums-btn" id="back-to-albums">
+                            <i class="bi bi-arrow-left"></i> 返回相册列表
+                        </button>
+                        <h3 id="current-album-title"></h3>
+                    </div>
+                    <div class="album-photos-grid" id="album-photos-grid"></div>
+                </div>
+            `;
+            this.initAlbumFolderEvents();
         }
     }
     
     /**
-     * 渲染照片卡片
+     * 渲染相册文件夹卡片
      */
-    renderPhotoCard(photo) {
-        // 优先使用加密的照片，否则使用占位图
-        const photoName = photo.src ? photo.src.replace(/^.*\//, '').replace(/\.[^/.]+$/, '') : `photo_${photo.id}`;
-        let imageSrc = getDecryptedImageUrl(photoName, 'gallery');
-        
-        // 如果没有加密图片，使用占位图
-        if (!imageSrc) {
-            imageSrc = `https://picsum.photos/400/400?random=${photo.id}`;
+    renderAlbumFolder(album, index) {
+        // 获取第一张照片作为封面
+        let coverUrl = '';
+        if (album.photos && album.photos.length > 0) {
+            coverUrl = decryptPhotoToUrl(album.photos[0].thumbnail, SITE_PASSWORD);
         }
         
         return `
-            <div class="photo-card">
-                <img src="${imageSrc}" alt="${photo.title}">
-                <div class="photo-overlay">
-                    <div class="photo-title">${photo.title}</div>
-                    <div class="photo-date"><i class="bi bi-calendar3"></i> ${photo.date}</div>
+            <div class="album-folder" data-album-index="${index}">
+                <div class="folder-cover">
+                    ${coverUrl ? `<img src="${coverUrl}" alt="${album.name}">` : '<i class="bi bi-folder-fill"></i>'}
+                    <div class="folder-count">${album.count} 张</div>
+                </div>
+                <div class="folder-info">
+                    <div class="folder-name"><i class="bi bi-folder-fill"></i> ${album.name}</div>
+                    <div class="folder-date">${album.date}</div>
+                    <div class="folder-desc">${album.description}</div>
                 </div>
             </div>
         `;
+    }
+    
+    /**
+     * 初始化文件夹点击事件
+     */
+    initAlbumFolderEvents() {
+        const folders = document.querySelectorAll('.album-folder');
+        const folderView = document.querySelector('.albums-folder-view');
+        const photosView = document.getElementById('album-photos-view');
+        const backBtn = document.getElementById('back-to-albums');
+        const titleEl = document.getElementById('current-album-title');
+        const photosGrid = document.getElementById('album-photos-grid');
+        
+        folders.forEach(folder => {
+            folder.addEventListener('click', () => {
+                const albumIndex = parseInt(folder.dataset.albumIndex);
+                const album = this.albums[albumIndex];
+                
+                if (!album) return;
+                
+                // 切换视图
+                folderView.style.display = 'none';
+                photosView.style.display = 'block';
+                titleEl.textContent = `${album.name} (${album.count}张)`;
+                
+                // 渲染照片
+                photosGrid.innerHTML = album.photos.map((photo, index) => 
+                    this.renderPhotoCard(photo, album.name, index)
+                ).join('');
+                
+                // 初始化灯箱
+                this.initPhotoLightbox();
+            });
+        });
+        
+        // 返回按钮
+        if (backBtn) {
+            backBtn.addEventListener('click', () => {
+                folderView.style.display = 'grid';
+                photosView.style.display = 'none';
+            });
+        }
+    }
+    
+    /**
+     * 渲染照片卡片（使用缩略图，点击显示原图）
+     */
+    renderPhotoCard(photo, albumName, index) {
+        // 解密缩略图
+        const thumbnailUrl = decryptPhotoToUrl(photo.thumbnail, SITE_PASSWORD);
+        
+        return `
+            <div class="photo-card" 
+                 data-album="${albumName}" 
+                 data-index="${index}"
+                 data-original-file="${photo.originalFile}"
+                 data-filename="${photo.filename}"
+                 data-size="${Math.round(photo.originalSize / 1024)}">
+                <img src="${thumbnailUrl || ''}" 
+                     alt="${photo.filename}" 
+                     loading="lazy"
+                     onerror="this.parentElement.innerHTML='<div class=\\'photo-error\\'><i class=\\'bi bi-image\\'></i></div>'">
+                <div class="photo-overlay">
+                    <div class="photo-title">${photo.filename}</div>
+                    <div class="photo-size"><i class="bi bi-arrows-fullscreen"></i> 点击查看原图</div>
+                </div>
+            </div>
+        `;
+    }
+    
+    /**
+     * 初始化照片灯箱
+     */
+    initPhotoLightbox() {
+        const photoCards = document.querySelectorAll('.photo-card[data-original-file]');
+        
+        photoCards.forEach(card => {
+            card.addEventListener('click', () => {
+                const originalFile = card.dataset.originalFile;
+                const filename = card.dataset.filename;
+                
+                if (originalFile) {
+                    this.showPhotoLightbox(originalFile, filename);
+                }
+            });
+        });
+    }
+    
+    /**
+     * 显示照片灯箱（按需加载原图）
+     */
+    async showPhotoLightbox(originalFile, filename) {
+        // 创建灯箱
+        const lightbox = document.createElement('div');
+        lightbox.className = 'photo-lightbox';
+        lightbox.innerHTML = `
+            <div class="lightbox-overlay"></div>
+            <div class="lightbox-content">
+                <div class="lightbox-loading">
+                    <i class="bi bi-hourglass-split"></i>
+                    <p>正在加载原图...</p>
+                </div>
+                <img class="lightbox-image" style="display: none;">
+                <div class="lightbox-info">
+                    <span class="lightbox-filename">${filename}</span>
+                    <button class="lightbox-download" title="下载原图">
+                        <i class="bi bi-download"></i>
+                    </button>
+                </div>
+                <button class="lightbox-close"><i class="bi bi-x-lg"></i></button>
+            </div>
+        `;
+        
+        document.body.appendChild(lightbox);
+        document.body.style.overflow = 'hidden';
+        
+        const img = lightbox.querySelector('.lightbox-image');
+        const loading = lightbox.querySelector('.lightbox-loading');
+        
+        // 关闭灯箱的函数
+        let originalUrl = null;
+        const closeLightbox = () => {
+            // 释放 Object URL
+            if (originalUrl) {
+                URL.revokeObjectURL(originalUrl);
+            }
+            lightbox.remove();
+            document.body.style.overflow = '';
+        };
+        
+        // 绑定关闭事件
+        const closeBtn = lightbox.querySelector('.lightbox-close');
+        const overlay = lightbox.querySelector('.lightbox-overlay');
+        closeBtn.addEventListener('click', closeLightbox);
+        overlay.addEventListener('click', closeLightbox);
+        
+        // ESC键关闭
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeLightbox();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+        
+        // 异步加载并解密原图
+        try {
+            loading.querySelector('p').textContent = '正在下载原图...';
+            const encryptedData = await loadOriginalPhoto(originalFile);
+            
+            if (!encryptedData) {
+                throw new Error('加载失败');
+            }
+            
+            loading.querySelector('p').textContent = '正在解密...';
+            originalUrl = decryptPhotoToUrl(encryptedData, SITE_PASSWORD);
+            
+            if (originalUrl) {
+                img.src = originalUrl;
+                img.onload = () => {
+                    loading.style.display = 'none';
+                    img.style.display = 'block';
+                };
+                img.onerror = () => {
+                    loading.innerHTML = '<i class="bi bi-exclamation-triangle"></i><p>图片加载失败</p>';
+                };
+            } else {
+                loading.innerHTML = '<i class="bi bi-exclamation-triangle"></i><p>解密失败</p>';
+            }
+            
+            // 下载按钮
+            const downloadBtn = lightbox.querySelector('.lightbox-download');
+            downloadBtn.addEventListener('click', () => {
+                if (originalUrl) {
+                    const a = document.createElement('a');
+                    a.href = originalUrl;
+                    a.download = filename;
+                    a.click();
+                }
+            });
+        } catch (error) {
+            console.error('加载原图失败:', error);
+            loading.innerHTML = '<i class="bi bi-exclamation-triangle"></i><p>加载失败，请重试</p>';
+        }
     }
 }
 

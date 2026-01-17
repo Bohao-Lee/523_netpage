@@ -92,8 +92,105 @@ function getDecryptedImageUrl(imageName, type = 'photos') {
     return null;
 }
 
+/**
+ * 解密照片数据（二进制图片）
+ * @param {string} encryptedBase64 - 加密后的Base64字符串
+ * @param {string} password - 密码
+ * @returns {Blob} - 解密后的图片Blob
+ */
+function decryptPhotoToBlob(encryptedBase64, password) {
+    try {
+        // Base64 解码
+        const binaryString = atob(encryptedBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        // XOR 解密
+        const passwordBytes = new TextEncoder().encode(password);
+        const decryptedBytes = new Uint8Array(bytes.length);
+        for (let i = 0; i < bytes.length; i++) {
+            decryptedBytes[i] = bytes[i] ^ passwordBytes[i % passwordBytes.length];
+        }
+        
+        // 创建 Blob
+        return new Blob([decryptedBytes], { type: 'image/jpeg' });
+    } catch (error) {
+        console.error('照片解密失败:', error);
+        return null;
+    }
+}
+
+/**
+ * 解密照片并返回 Object URL
+ * @param {string} encryptedBase64 - 加密后的Base64字符串
+ * @param {string} password - 密码
+ * @returns {string} - Object URL
+ */
+function decryptPhotoToUrl(encryptedBase64, password) {
+    const blob = decryptPhotoToBlob(encryptedBase64, password);
+    if (blob) {
+        return URL.createObjectURL(blob);
+    }
+    return null;
+}
+
+/**
+ * 加载相册索引
+ */
+async function loadAlbumsIndex() {
+    try {
+        const response = await fetch('data/encrypted-photos/albums-index.json');
+        if (!response.ok) {
+            return [];
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('加载相册索引失败:', error);
+        return [];
+    }
+}
+
+/**
+ * 加载单个相册数据
+ */
+async function loadAlbum(albumFile) {
+    try {
+        const response = await fetch(`data/encrypted-photos/${albumFile}`);
+        if (!response.ok) {
+            return null;
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('加载相册失败:', error);
+        return null;
+    }
+}
+
+/**
+ * 加载单张原图（按需加载）
+ */
+async function loadOriginalPhoto(originalFile) {
+    try {
+        const response = await fetch(`data/encrypted-photos/${originalFile}`);
+        if (!response.ok) {
+            return null;
+        }
+        return await response.text();
+    } catch (error) {
+        console.error('加载原图失败:', error);
+        return null;
+    }
+}
+
 // 导出到全局
 window.loadEncryptedImages = loadEncryptedImages;
 window.getDecryptedImageUrl = getDecryptedImageUrl;
+window.decryptPhotoToBlob = decryptPhotoToBlob;
+window.decryptPhotoToUrl = decryptPhotoToUrl;
+window.loadAlbumsIndex = loadAlbumsIndex;
+window.loadAlbum = loadAlbum;
+window.loadOriginalPhoto = loadOriginalPhoto;
 window.decryptedPhotos = {};
 window.decryptedGallery = {};
